@@ -34,5 +34,7 @@ A scoreboard tracks per task: interview questions asked, whether the first PRD w
 - The paper is written for product managers and anyone delegating to AI, never for engineers. Technical machinery appears only as one diagram, then the writing returns to management lessons.
 - The worked example must be a real need of Asish's, not an invented demo. Its value is credibility, not the software itself.
 - No em dashes, en dashes, hyphens, or colons as punctuation in any prose written for this repo, including the paper and artifacts authored by Claude. Technical strings are exempt.
+- Continuity. At the start of every session, read journal/SESSIONS.md before doing anything. Before a session ends, append a dated entry there (what happened, where things stand, next) and copy the raw session transcript into journal/raw/ named by date. journal/raw/ is gitignored on purpose, raw chats contain private details and must never be committed or published. SESSIONS.md is committed.
+- Sessions about this project should be started from this folder so claude --resume lists them here.
 - Commit working checkpoints as you go.
 - Keep this file updated as the project evolves (goal, status, how to run).
