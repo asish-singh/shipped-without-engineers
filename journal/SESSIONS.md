@@ -26,3 +26,11 @@ One entry per working session between the PM and Claude. This file is the contin
 - Take Asish's acceptance verdict on task 01, file it, update the scoreboard.
 - Task 02 is the judge, pulling Google Meet transcripts via Calendar and grading meetings for decisions, owners, and next steps. Task 03 is the weekly review page plus memo and the manual RUN publish step, which pushes anonymized patterns only, never names, employers, apps, or sites.
 - The paper can start drafting any time, chapter one is the discovery interview and the pivot story.
+
+## Session 2, 2026-07-12
+
+**What happened.** Asish reviewed the first paper draft and found it too vague, rambling, and silent on the concrete machinery. The paper was rewritten and pushed. It now names Claude as engineering lead and Codex as developer, presents the five stage cycle as an explicit numbered method, explains the role and cost distribution, tells the discovery story through the rejected SPEC.md pivot, and reports task 01 with real figures (5 questions, 145,581 tokens, 35 tests, 52 KB, 0 blocking, 3 cosmetic, 1 fabricated claim).
+
+**Where things stand.** Watcher still sleeping until Monday 18:00 IST. Task 01 acceptance still pending one real shift of data.
+
+**Next.** Unchanged from session 1, take the acceptance verdict, then task 02 the meeting judge.
