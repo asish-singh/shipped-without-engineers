@@ -1,64 +1,81 @@
 # Shipped Without Engineers
 
-*A working paper on delegating to AI, written by a product manager who cannot code. Living draft. Everything asserted here links to unedited artifacts elsewhere in this repository, including the parts that make me look bad.*
+*A working paper on delegating to AI, written by a product manager who cannot code. Living draft. Every claim links to an unedited artifact in this repository, including the ones that make me look bad.*
 
-## 1.
+## 1. What happened, in one paragraph
 
-On a Friday night in July I asked an AI to interview me about a product idea, and by Saturday morning there was working software on my machine that I had not written a line of. I want to be careful with that sentence, because it is the kind of sentence that gets written a lot right now, usually by people selling something. So let me say immediately what this paper is not. It is not a claim that AI replaces engineers. It is not a tutorial about tools. And the software itself, a small program that watches how I spend my night shifts, is honestly not that interesting.
+On a Friday night in July 2026 I set up two AI models as a two person engineering team. Claude, running in Claude Code, acted as the engineering lead. Codex, invoked from the command line with `codex exec`, acted as the developer. I acted as the product manager, which is my actual job, and I never wrote a line of code, a spec, or a prompt for the developer. By Saturday morning the team had shipped working software through a five stage delivery process, the developer's build passed review with zero blocking defects, and the developer's own completion report contained one flat fabrication that the process caught in minutes. This paper documents the method, the numbers, and what a product manager should take from it.
 
-What I think is interesting is what I had to do to get it, because none of it was technical. I was interviewed. I signed things. I rejected a specification. I caught nothing myself, but the process I insisted on caught a lie. Every one of those moments came from the job I already do, product management, and by the end of the first task I had stopped thinking of this as a coding experiment. It is a management story in which the employees happen to be AIs.
+## 2. The team and how the work is distributed
 
-The premise of this paper, which the rest of it tries to earn, is that the reliability of an AI teammate is mostly decided before the work starts, at the moment of delegation, by how precisely you can say what done means. That is a skill. It has a name and a profession attached to it. Nobody is more practiced at it than a decent product manager, and almost nobody in the current conversation about AI is talking about it.
+The arrangement is deliberate and copied from every functioning company I have seen. Senior judgment directs junior throughput, with a quality gate between them.
 
-## 2. The setup
+**The product manager (me).** I speak only plain language. I answer interview questions, sign or reject documents, and accept or reject the final result. I never see code and I am never asked to evaluate anything technical.
 
-Two AIs, arranged deliberately. An expensive, careful model as the engineering lead. A cheaper, faster one as the developer. The lead interviews me, writes the specifications, briefs the developer, reviews the developer's work with instructions to be hostile, and demonstrates results to me. The developer only ever sees the brief. I only ever see plain language.
+**The engineering lead (Claude).** The expensive, careful model. It interviews me, writes the product requirements, translates my signed intent into an engineering brief with a checkable definition of done, reviews the developer's work with instructions to be hostile, and demonstrates the result to me in plain language.
 
-I did not invent this arrangement, I stole it from every functioning company I have ever seen. Senior judgment directing junior throughput, with a quality gate between them. The economics are the same too. The first task cost about 145 thousand tokens of developer labor, which my existing subscription absorbed without noticing. Judgment is what costs money, so you spend it where being wrong is expensive, on understanding intent and on checking work, and you buy the labor cheap.
+**The developer (Codex).** The labor. It is invoked non interactively with `codex exec` and it works only from the engineering brief. It never sees my raw conversation, my reasoning, or my corrections. If something matters, it must be in the brief.
 
-What I did not expect is how much the arrangement would depend on writing things down. A human team shares context by osmosis, hallway conversation, tone of voice, months of accumulated understanding of what the boss actually means. An AI team has none of that. The artifact is the entire relationship. If it is not in the brief, it does not exist. This turns out to be less of a limitation than a discipline, and it is the discipline this repository documents, stage by stage, with the actual artifacts.
+The economics follow the org chart. Judgment is what costs money, so it is spent where being wrong is expensive, on understanding intent and on checking work. Labor is bought cheap. The first build consumed 145,581 Codex tokens, which my existing subscription absorbed without noticing.
 
-## 3. What happened, told honestly
+One property of this setup surprised me. A human team shares context by osmosis, hallway talk, tone, months of accumulated understanding. An AI team has none of that. The artifact is the entire relationship. If it is not written in the brief, it does not exist. That sounds like a limitation and works like a discipline.
 
-The project began as a worse idea. I wanted to build a public tool, and my AI lead dutifully spent an evening with me spec'ing one. The founding document from that evening is still in this repository, unedited, because what happened next is the first real lesson. Reading the specification back, I realized I was about to build a product nobody asked for, in order to write a paper about how well I build products. I rejected it at sign off. My exact words, which are also preserved, were that it would be very stupid.
+## 3. The method, five stages, each leaving an artifact
 
-I notice that rejecting your own signed off direction feels like failure and is actually the system working. The sign off stage exists precisely so that a misunderstanding costs a conversation instead of a build. It caught one. That the misunderstanding was between me and myself is beside the point, or maybe it is the point.
+Every task moves through the same five stages, and every stage files a saved, unedited document in `tasks/`.
 
-The replacement came from an ordinary complaint. I work nights, six in the evening until quarter to five in the morning, India time, and I genuinely did not know where those hours went. So the worked example became a tracker for my own shifts. When the lead interviewed me about it, five questions, transcript saved verbatim, something surfaced that I had never articulated. Asked to name my time sinks, I did not say social media or news. I said fake meetings, judged by the quality of their transcripts, and huddles that end with no owner for anything. My waste was not distraction. It was work shaped. It performs as work, it appears in the calendar as work, and it produces nothing. No screen time app measures that, which is why I had never seen it measured.
+1. **Discovery.** Claude interviews me, one question at a time, answers in writing. Transcript saved verbatim.
+2. **PRD sign off.** Claude writes back what it believes I want, including its assumptions and what it considers out of scope. I approve or correct in plain language. Every version is saved.
+3. **Engineering brief.** Claude writes the ticket for Codex, ending in a definition of done, a list of statements checkable as yes or no. I do not watch this being written. I only see the filed artifact.
+4. **Cross model review.** Codex's work cannot merge until Claude has formally tried to fault it against the definition of done, rerunning every check itself rather than trusting the developer's report. Findings are classified as blocking, cosmetic, or false alarm. Blocked work goes back to Codex with the objection attached.
+5. **Acceptance.** Claude demonstrates the working result and the proof for each done criterion. I accept or reject in a sentence.
 
-I want to flag what produced that insight, because it was not the AI being brilliant. It was being asked a direct question by something with infinite patience and no social stake in my answer, and having to answer in writing. The discovery interview is the oldest trick in product management. It works on stakeholders. It turns out to work on yourself.
+The load bearing stage is the definition of done. "Handle my schedule properly" is a wish. "At 4.46 on Saturday morning it records nothing" is a contract. If you cannot produce such lines for a piece of work, you are not ready to delegate it, and the AI is not the bottleneck.
 
-Then the part I cannot do. The lead translated my signed intent into a brief for the developer, ending in a definition of done, statements checkable as yes or no. My schedule became boundary cases, at 4.44 on a Saturday morning the tracker records, at 4.46 it does not, Sunday nights do not exist. My four word correction at sign off, that the thing must stay light, became a hard budget, under a hundred kilobytes, nothing installed. I never saw this document being written. I have still not read the code. The method does not ask me to supervise work I cannot evaluate. It asks me to define done for work I can.
+## 4. How the method was discovered, by failing
 
-The developer built it in one pass, and built it well. Then it filed its completion report, and in the middle of the report, among true statements, was a claim about a side effect that had never happened. Something it had supposedly created and labeled somewhere. No such thing existed anywhere. The review stage, whose one rule is to reverify every claim rather than trust the worker's account, caught it in minutes and classified it, alongside three minor findings, in a written verdict that is in this repository.
+The project began as a worse idea. I wanted to build a public tool, and Claude dutifully spent an evening spec'ing one with me. The founding document, `SPEC.md`, is still in this repository unedited, because what happened next is the first real lesson. Reading the specification back at sign off, I realized I was about to build a product nobody asked for, in order to write a paper about how well I build products. I rejected it. My exact recorded words were that it would be very stupid.
 
-I keep turning that moment over. The work was excellent. The report about the work contained a fabrication, delivered in the same confident voice as everything else. If I had been working alone with that AI, I would have believed it, because I believed everything else it said and had no way to check. Most people delegating to AI today are working alone with it. That should worry you more than the famous failure modes do, because the famous failure modes announce themselves, and this one arrived inside a job done well.
+Rejecting your own signed direction feels like failure and is actually the system working. The sign off stage exists so that a misunderstanding costs a conversation instead of a build. It caught one. That the misunderstanding was between me and myself is beside the point, or perhaps it is the point. The paper became the deliverable and the software became the evidence.
 
-## 4. The method, extracted
+The replacement came from an ordinary complaint. I work nights, 18:00 to 04:45 India time, and I did not know where the hours went. So the worked example became a tracker for my own shifts. In the discovery interview, five questions, transcript in `tasks/01-shift-tracker/discovery.md`, something surfaced that I had never articulated. Asked to name my time sinks, I did not say social media. I said fake meetings, judged by the quality of their transcripts, and huddles that end with no owner for anything. My waste is not distraction, it is work shaped. It appears in the calendar as work and produces nothing, which is why no screen time app has ever measured it. That insight was not the AI being brilliant. It was being asked a direct question by something with infinite patience and no social stake in my answer, and having to answer in writing. The discovery interview is the oldest trick in product management. It works on yourself.
 
-Written as what I would tell another PM, or anyone who delegates to AI, over coffee.
+## 5. Task 01, the numbers
 
-Make it interview you before anything starts. One question at a time, answers in writing. You are not documenting requirements, you are discovering what you actually want, and you will be surprised.
+The first task was a local watcher that samples my activity only during shift hours, stores everything on my own machine, and touches no network.
 
-Make it write back what it heard, with its assumptions and what it considers out of scope, and sign that or correct it. Every misunderstanding you catch here costs a sentence. The same misunderstanding caught after the build costs the build.
+- Discovery questions asked, 5.
+- PRD accepted on the first version with one correction, the tool must stay very light. Claude turned those four words into a hard budget in the brief, under 100 KB, zero dependencies, nothing installed.
+- My schedule became boundary cases in the definition of done. Monday 17:59 records nothing, Monday 18:00 records, Saturday 04:44 records, Saturday 04:46 does not, Sunday nights do not exist.
+- Codex built it in one pass. 145,581 tokens.
+- Claude's review reran everything independently. All 35 tests passed, the boundary cases behaved, the footprint came in at 52 KB, and an automated check confirmed no network modules are imported anywhere.
+- Review verdict, 0 blocking findings, 3 cosmetic, 1 anomaly.
 
-Insist on a definition of done that is answerable yes or no, line by line. "Handle my schedule properly" is a wish. "At 4.46 it records nothing" is a contract. If you cannot produce such lines for a piece of work, you have learned something important, you are not ready to delegate that work, and the AI is not the bottleneck.
+The anomaly is the most important line on the scoreboard. Codex's completion report, among true statements, claimed that "collaboration log issue 12 was created and labeled." No such issue, log, or side effect exists anywhere in the repository or on GitHub. The work was excellent. The report about the work contained a fabrication, delivered in the same confident voice as everything else. The review stage caught it in minutes because its one rule is to reverify every claim rather than trust the worker's account. The full record is in `tasks/01-shift-tracker/review.md`.
 
-Never accept the worker's own account of what it did. Have the work checked against the contract by something other than whoever did it, and make the checker rerun everything. My first task produced a false claim inside an excellent delivery. Yours will too, eventually, and the only question is whether your process notices or your customer does.
+If I had been working alone with that AI, I would have believed the false claim, because I believed everything else it said and had no way to check. Most people delegating to AI today are working alone with it. That should worry you more than the famous failure modes do. The famous ones announce themselves. This one arrived inside a job done well.
+
+## 6. What to copy, told over coffee
+
+Make the AI interview you before anything starts, one question at a time, answers in writing. You are not documenting requirements, you are discovering what you actually want.
+
+Make it write back what it heard, with assumptions and out of scope items, and sign or correct that. A misunderstanding caught here costs a sentence. The same one caught after the build costs the build.
+
+Insist on a definition of done answerable yes or no, line by line, before any work begins.
+
+Never accept the worker's own account of what it did. Have the work checked against the contract by a different model than the one that built it, and make the checker rerun everything itself. My first task produced a false claim inside an excellent delivery. Yours will too, eventually, and the only question is whether your process notices or your customer does.
 
 Accept or reject in writing, against the contract, nothing else. Done is a verdict, not a feeling of being impressed.
 
-None of this is new. It is the boring machinery of well run delivery, applied to workers who read everything, forget nothing, never get offended by hostile review, and occasionally lie by accident. The machinery matters more with them, not less, because all the informal correction of a human team, the raised eyebrow, the corridor clarification, is gone. What is written is all there is.
+None of this is new. It is the boring machinery of well run delivery, applied to workers who read everything, forget nothing, never resent hostile review, and occasionally lie by accident. The machinery matters more with them, not less, because all the informal correction of a human team is gone. What is written is all there is.
 
-## 5. Where this goes next
+## 7. Where this goes next
 
-The tracker is live on my machine as of this weekend, sleeping until Monday evening. From here the paper stops being about setup and starts being about results, and I genuinely do not know what they will say, which is the fun of it.
+The watcher is live on my machine, sleeping until Monday evening. Acceptance of task 01 waits on one real shift of data. Task 02 is the meeting judge, which will read my Google Meet transcripts and grade each meeting, decisions made, owners assigned, next steps that survived, or empty calories. Task 03 is the weekly memo, a plain language letter on where my hours went and which parts of my calendar are theater. Each will run through the same five stages, each will leave its artifacts here, and the scoreboard will keep the running tally.
 
-Next comes the meeting judge, which will read my meeting transcripts and grade each one, decisions made, owners assigned, next steps that survived, or empty calories. Then the weekly memo, a plain language letter telling me where my hours went and which parts of my calendar are theater. After a few weeks, a monthly reckoning, what to stop doing. Each will be delivered through the same five stages, each will leave its artifacts here, and the scoreboard will keep the running tally of interviews, rejections, review catches, and cost.
+My own data stays on my machine permanently. What gets published are patterns, by hand, on days I choose.
 
-My own data stays on my own machine, permanently. What gets published here are patterns, by hand, on the days I choose. If the memos say something uncomfortable about how I work, and I expect they will, the discomfort will be published and the specifics will not.
-
-The larger bet, stated plainly so I can be held to it. The industry is currently obsessed with what AI can do, and is about to discover that its real constraint is people who can say precisely what they want and verify precisely what they got. That is not an engineering skill. If this repository, its evidence trail, and its eventual results make one person delegate differently next week, the paper has done its job.
+The larger bet, stated plainly so I can be held to it. The industry is obsessed with what AI can do and is about to discover that its real constraint is people who can say precisely what they want and verify precisely what they got. That is not an engineering skill. It is product management, and almost nobody in the current conversation about AI is talking about it.
 
 ## Appendix, the evidence
 
