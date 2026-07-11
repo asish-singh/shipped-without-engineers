@@ -16,6 +16,11 @@ One entry per working session between the PM and Claude. This file is the contin
 - The watcher sleeps until Monday 2026-07-13 at 18:00 IST, when real data collection begins. First run may trigger one or two macOS permission pop ups naming Python or osascript, Asish should click Allow.
 - Task 01 acceptance is pending one real shift of data. On Tuesday, run `./watcher.py status` inside product/watcher, a sample from shift hours means the definition of done is met and Asish accepts or rejects in a sentence.
 
+**Later the same session.**
+
+- The repo went public at https://github.com/asish-singh/shipped-without-engineers after a sweep confirmed no personal identifiers in committed files. Raw transcripts and activity data stay local only, Asish decided against a private backup repo.
+- The first full draft of the paper was written to paper/paper.md and pushed. Asish's direction, write like a sophisticated human, story first, honest about failures, for PMs and people who delegate to AI, never for engineers. Sections 5 onward will be rewritten by real data.
+
 **Next.**
 
 - Take Asish's acceptance verdict on task 01, file it, update the scoreboard.
