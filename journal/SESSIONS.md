@@ -48,15 +48,23 @@ One entry per working session between the PM and Claude. This file is the contin
 - The review re ran everything, then did the check that mattered. The reviewer reintroduced the original bug in a scratch copy and confirmed both new tests fail. Approved with zero findings. The developer's self report was true this time, collaboration log issue 51 genuinely exists, which is worth noting against the fabrication on the first pass.
 - Two findings surfaced from running the real system rather than reading the diff. The launchd agent is disabled in launchd's persistent override database, so it has not run since Friday morning and Friday 24 July produced no log. And the installed copy in Application Support is still the July 12 code, so the fix is not live. Both are the same defect class as the original bug, silent failure, because the plist sends stdout and stderr to /dev/null.
 
+**Then the reinstall exposed a third silent failure.**
+
+- Asish authorised the reinstall. install.sh printed "Shift Tracker is installed and loaded", and it was lying. The launchd exit status column read 2, the agent was dying instantly, and launchd was respawning it every thirty seconds. On Monday it would have collected nothing.
+- The cause. The source plist carries placeholder tokens in ProgramArguments, and install.sh swapped them with `plutil -replace ProgramArguments.0` and `.1`. On current macOS those calls insert instead of overwrite, so the installed plist held five arguments with the placeholders still sitting in the middle. The watcher accepts one argument, got three, hit its usage branch, and returned 2. Reproduced directly on the command line.
+- Why it was invisible. The plist sent stderr to `/dev/null`, and install.sh verified only that launchd knew the service, which is also true of a service that dies instantly.
+- Worth recording honestly, the reviewer had already committed an approving review of the idle fix before finding this. The gate that caught it was not code reading, it was running the real thing and looking at one number.
+- Task 01b went to Codex. The plist is now written whole with plistlib, stderr goes to `~/.shift-tracker/watcher.err.log`, and the installer waits five seconds and checks the real process state before it dares print success, exiting nonzero with plain language guidance when the agent is not healthy. The launchctl binary is injectable so tests never touch the real launchd domain.
+- Review passed with zero findings. The reviewer reverted install.sh to the old plutil approach in a scratch copy and the new test failed with `AssertionError: 5 != 3`, which is the defect exactly. The broken install path was also proven to exit 1 with a readable message. Collaboration log issue 52 was checked and is real, two truthful self reports in a row now.
+
 **Where things stand.**
 
-- The repair is merged and proven in the repository. It is not yet running on the machine.
-- Task 01 acceptance is still open, pending the reinstall plus one real shift with a working sensor. The next working shift is Monday 27 July at 18:00.
-- Asish has not yet been asked to authorise the re enable and reinstall, since it touches his machine and nothing is lost by waiting, Saturday and Sunday nights are not worked.
+- The watcher is installed, running, and finally pointed at the repaired code. Verified by the reviewer ten minutes after install, `state = running`, `runs = 1`, `pid = 15807`, `last exit code = (never exited)`, 0.0 percent CPU, about 10 MB resident. A crash looping agent climbs its run count, so a run count of one is the proof.
+- All eight shifts of production data are intact and untouched throughout.
+- Task 01 acceptance is still open by exactly one step, a shift collected with a live idle sensor. The next working shift is Monday 27 July at 18:00.
 
 **Next.**
 
-- Get authorisation, then `launchctl enable gui/501/com.shifttracker.watcher` and rerun install.sh, and confirm with the status command that the agent is loaded and the idle reading is live.
-- Consider a small task 01b for the silent failure class, a heartbeat plus real log paths instead of /dev/null, so the watcher can say when it has died.
+- On Tuesday 28 July, check the new log for idle values that are real numbers rather than zeros, then take Asish's acceptance verdict on task 01 and close it.
 - Then task 02, the meeting judge.
-- The paper needs a new section on this, the mock shaped definition of done. It is the strongest evidence yet for the thesis that defining done is the skill.
+- The paper needs a new section, and it now has a much better one than planned. Three silent failures in one day on one small tool, each of which passed every gate while the software's own account of itself was confident and wrong. The mock shaped definition of done is the headline, and the wider lesson is that a definition of done which can be satisfied without touching reality is not finished being written.

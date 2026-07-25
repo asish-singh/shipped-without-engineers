@@ -360,7 +360,7 @@ def main(arguments=None):
     arguments = sys.argv[1:] if arguments is None else arguments
     command = arguments[0] if arguments else "once"
     if len(arguments) > 1 or command not in {"once", "run", "status"}:
-        print("Usage  watcher.py once or run or status", file=sys.stderr)
+        print("watcher.py usage  watcher.py once or run or status", file=sys.stderr)
         return 2
     if command == "status":
         print_status()

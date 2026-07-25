@@ -2,9 +2,9 @@ import ast
 import importlib.util
 import io
 import json
+import os
 import plistlib
 import re
-import shutil
 import stat
 import subprocess
 import sys
@@ -412,7 +412,7 @@ class PackagingTests(unittest.TestCase):
         self.assertTrue(plist["RunAtLoad"])
         self.assertTrue(plist["KeepAlive"])
         self.assertEqual(plist["StandardOutPath"], "/dev/null")
-        self.assertEqual(plist["StandardErrorPath"], "/dev/null")
+        self.assertEqual(plist["StandardErrorPath"], "__ERROR_LOG_PATH__")
 
     def test_shell_scripts_parse_and_are_executable(self):
         for name in ("install.sh", "uninstall.sh"):
@@ -429,26 +429,160 @@ class PackagingTests(unittest.TestCase):
         self.assertIn("osascript", install)
         self.assertIn("never sent anywhere", install)
         self.assertIn('cp "$SOURCE_WATCHER" "$TEMPORARY_WATCHER"', install)
-        self.assertIn('launchctl print "$SERVICE"', install)
+        self.assertIn("service_is_healthy", install)
+        self.assertIn("/bin/sleep 5", install)
+        self.assertIn('"$LAUNCHCTL_COMMAND" print "$SERVICE"', install)
         self.assertIn("records remain", uninstall)
         self.assertIn('launchctl print "$SERVICE"', uninstall)
         self.assertIn('rm -f "$WATCHER_PATH"', uninstall)
         self.assertNotIn('rm -rf "$HOME/.shift-tracker"', uninstall)
 
     @unittest.skipUnless(Path("/usr/bin/plutil").is_file(), "macOS plutil is required")
-    def test_plist_path_replacement_commands_work(self):
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            path = Path(temporary_directory) / "agent.plist"
-            shutil.copyfile(DIRECTORY / "com.shifttracker.watcher.plist", path)
-            commands = [
-                ["/usr/bin/plutil", "-replace", "ProgramArguments.0", "-string", "/usr/bin/python3", str(path)],
-                ["/usr/bin/plutil", "-replace", "ProgramArguments.1", "-string", "/tmp/watcher.py", str(path)],
-            ]
-            for command in commands:
-                subprocess.run(command, check=True, capture_output=True)
+    def test_real_installer_writes_exact_valid_arguments_and_error_log(self):
+        with tempfile.TemporaryDirectory() as home:
+            result = self.run_isolated_installer(home, "healthy")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            path = Path(home) / "Library" / "LaunchAgents" / "com.shifttracker.watcher.plist"
             with path.open("rb") as plist_file:
                 plist = plistlib.load(plist_file)
-            self.assertEqual(plist["ProgramArguments"][:2], ["/usr/bin/python3", "/tmp/watcher.py"])
+            arguments = plist["ProgramArguments"]
+            self.assertEqual(len(arguments), 3)
+            self.assertTrue(all("__" not in argument for argument in arguments))
+            self.assertTrue(Path(arguments[0]).is_file())
+            self.assertTrue(os.access(arguments[0], os.X_OK))
+            self.assertTrue(Path(arguments[1]).is_file())
+            self.assertEqual(arguments[2], "run")
+            lint = subprocess.run(
+                ["/usr/bin/plutil", "-lint", str(path)],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(lint.returncode, 0, lint.stdout + lint.stderr)
+            error_log = Path(home) / ".shift-tracker" / "watcher.err.log"
+            self.assertEqual(plist["StandardErrorPath"], str(error_log))
+            self.assertTrue(error_log.is_file())
+            if os.environ.get("SHIFT_TRACKER_SHOW_PROOF_OUTPUT") == "1":
+                print(result.stdout.strip())
+                print("ProgramArguments count  {}".format(len(arguments)))
+                for index, argument in enumerate(arguments):
+                    print("ProgramArguments {}  {}".format(index, argument))
+                print("Placeholder substrings absent  yes")
+                print("Interpreter executable file  yes")
+                print("Watcher file exists  yes")
+                print(lint.stdout.strip())
+                print("StandardErrorPath  {}".format(plist["StandardErrorPath"]))
+                print("Error log exists  yes")
+
+    def test_installer_fails_plainly_when_agent_does_not_survive(self):
+        with tempfile.TemporaryDirectory() as home:
+            result = self.run_isolated_installer(home, "failing")
+            output = result.stdout + result.stderr
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("installation did not work", output)
+            self.assertIn("background agent did not stay healthy", output)
+            self.assertIn("watcher.err.log", output)
+            self.assertIn("launchctl print", output)
+            self.assertNotIn("Shift Tracker is installed and loaded.", output)
+            watcher_path = Path(home) / "Library" / "Application Support" / "ShiftTracker" / "watcher.py"
+            self.assertFalse(watcher_path.exists())
+            if os.environ.get("SHIFT_TRACKER_SHOW_PROOF_OUTPUT") == "1":
+                print("Installer exit code  {}".format(result.returncode))
+                print("Broken watcher exists  no")
+                print(output.strip())
+
+    def test_broken_plist_arguments_exit_nonzero_with_named_usage(self):
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(DIRECTORY / "watcher.py"),
+                "__PYTHON_PATH__",
+                "__WATCHER_PATH__",
+                "run",
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("watcher.py usage", result.stderr)
+        if os.environ.get("SHIFT_TRACKER_SHOW_PROOF_OUTPUT") == "1":
+            print("Watcher exit code  {}".format(result.returncode))
+            print(result.stderr.strip())
+
+    def run_isolated_installer(self, home, result_name):
+        home_path = Path(home)
+        self.assertNotEqual(home_path.resolve(), Path.home().resolve())
+        marker = home_path / ".shift-tracker-test-home"
+        marker.touch()
+        launcher = home_path / "fake-launchctl"
+        launcher.write_text(
+            """#!/bin/sh
+set -eu
+
+[ -f "$HOME/.shift-tracker-test-home" ] || exit 99
+STATE_PATH=${SHIFT_TRACKER_FAKE_STATE:?}
+RESULT_NAME=${SHIFT_TRACKER_FAKE_RESULT:?}
+
+case "$1" in
+    bootout|unload|remove)
+        if [ -f "$STATE_PATH" ]; then
+            rm -f "$STATE_PATH"
+            exit 0
+        fi
+        exit 1
+        ;;
+    enable)
+        exit 0
+        ;;
+    bootstrap|load)
+        if [ "$RESULT_NAME" = "failing" ]; then
+            rm -f "$HOME/Library/Application Support/ShiftTracker/watcher.py"
+        fi
+        : >"$STATE_PATH"
+        exit 0
+        ;;
+    print)
+        [ -f "$STATE_PATH" ] || exit 1
+        if [ "$RESULT_NAME" = "failing" ]; then
+            printf 'gui/501/com.shifttracker.watcher = {\n\tstate = waiting\n\truns = 1\n\tlast exit code = 2\n}\n'
+        else
+            printf 'gui/501/com.shifttracker.watcher = {\n\tstate = running\n\truns = 1\n\tpid = 4242\n\tlast exit code = (never exited)\n}\n'
+        fi
+        ;;
+    list)
+        [ -f "$STATE_PATH" ] || exit 1
+        if [ "$RESULT_NAME" = "failing" ]; then
+            printf '{\n\t"LastExitStatus" = 2;\n}\n'
+        else
+            printf '{\n\t"LastExitStatus" = 0;\n\t"PID" = 4242;\n}\n'
+        fi
+        ;;
+    *)
+        exit 2
+        ;;
+esac
+""",
+            encoding="utf-8",
+        )
+        launcher.chmod(0o700)
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "HOME": str(home_path),
+                "PYTHONDONTWRITEBYTECODE": "1",
+                "SHIFT_TRACKER_LAUNCHCTL_COMMAND": str(launcher),
+                "SHIFT_TRACKER_FAKE_STATE": str(home_path / "fake-launchctl.state"),
+                "SHIFT_TRACKER_FAKE_RESULT": result_name,
+            }
+        )
+        return subprocess.run(
+            [str(DIRECTORY / "install.sh")],
+            capture_output=True,
+            text=True,
+            check=False,
+            env=environment,
+        )
 
     def test_documented_command_and_small_footprint(self):
         readme = (DIRECTORY / "README.md").read_text(encoding="utf-8")
