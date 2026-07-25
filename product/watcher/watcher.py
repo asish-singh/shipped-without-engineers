@@ -131,14 +131,14 @@ def read_frontmost_activity():
 
 
 def idle_seconds_from_ioreg(output):
-    match = re.search(r'"HIDIdleTime"\s*=\s*(\d+)', output)
+    match = re.search(r'(?m)^[ \t]*"HIDIdleTime"[ \t]*=[ \t]*(\d+)[ \t]*$', output)
     if match is None:
-        return 0.0
+        return None
     return int(match.group(1)) / 1_000_000_000
 
 
 def read_idle_seconds():
-    output = run_command(["/usr/sbin/ioreg", "-c", "IOHIDSystem", "-d", "1"])
+    output = run_command(["/usr/sbin/ioreg", "-r", "-c", "IOHIDSystem", "-d", "1"])
     return idle_seconds_from_ioreg(output)
 
 
@@ -247,7 +247,8 @@ def sample_once(
     application, window_title = activity_reader()
     application = application if isinstance(application, str) else ""
     window_title = window_title if isinstance(window_title, str) else ""
-    idle_seconds = max(0.0, float(idle_reader()))
+    idle_reading = idle_reader()
+    idle_seconds = None if idle_reading is None else max(0.0, float(idle_reading))
     url_host = host_reader(application) if application in BROWSER_TARGETS else ""
     url_host = normalize_host(url_host) if isinstance(url_host, str) else ""
 
@@ -256,7 +257,7 @@ def sample_once(
         "application": application,
         "window_title": window_title,
         "idle_seconds": idle_seconds,
-        "idle": idle_seconds > IDLE_LIMIT_SECONDS,
+        "idle": idle_seconds is not None and idle_seconds > IDLE_LIMIT_SECONDS,
         "url_host": url_host,
     }
     if set(record) != RECORD_FIELDS:
@@ -339,14 +340,20 @@ def last_recorded_sample(home=None):
     return None
 
 
-def print_status(timestamp=None, home=None, loaded=None, output=print):
+def print_status(timestamp=None, home=None, loaded=None, output=print, idle_reader=None):
     timestamp = local_now() if timestamp is None else as_local_timestamp(timestamp)
     loaded = agent_is_loaded() if loaded is None else loaded
+    idle_reader = read_idle_seconds if idle_reader is None else idle_reader
+    idle_seconds = idle_reader()
     last_sample = last_recorded_sample(home)
     output("Agent loaded  {}".format("yes" if loaded else "no"))
     output("Inside shift window  {}".format("yes" if is_in_shift_window(timestamp) else "no"))
     output("Today's log  {}".format(log_path_for_timestamp(timestamp, home)))
     output("Last recorded sample  {}".format(last_sample if last_sample is not None else "none"))
+    if idle_seconds is None:
+        output("Idle sensor is unavailable")
+    else:
+        output("Current idle seconds  {}".format(idle_seconds))
 
 
 def main(arguments=None):

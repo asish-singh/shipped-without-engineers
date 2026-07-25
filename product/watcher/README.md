@@ -2,7 +2,9 @@
 
 Shift Tracker quietly records foreground activity during the defined evening and early morning shift hours. It takes one sample every thirty seconds while the shift is active. It records nothing outside those hours.
 
-Each sample contains the local time, the foreground application name, the front window title when macOS allows it, idle seconds, and whether idle time is over three minutes. For Safari, Chrome, Arc, Brave, and Edge it also records only the host of the active tab. It does not keep the rest of the web address.
+Each sample contains the local time, the foreground application name, idle seconds when the sensor is available, and whether idle time is over three minutes. A null idle reading means the sensor was unavailable, so activity is unknown. It does not mean the user was active.
+
+Window titles are rarely available because macOS usually exposes them only for applications in the visible desktop space. Nothing should depend on a window title being present. For Safari, Chrome, Arc, Brave, and Edge each sample also records only the host of the active tab. It does not keep the rest of the web address.
 
 ## Privacy
 
@@ -34,7 +36,7 @@ Open Terminal in `product/watcher` and run this command.
 ./watcher.py status
 ```
 
-The result says whether the background agent is loaded, whether the shift window is active now, where the current log belongs, and when the latest sample was recorded.
+The result says whether the background agent is loaded, whether the shift window is active now, where the current log belongs, when the latest sample was recorded, and the current idle seconds. It says plainly when the idle sensor is unavailable.
 
 ## Uninstall
 

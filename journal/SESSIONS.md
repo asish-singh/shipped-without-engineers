@@ -34,3 +34,29 @@ One entry per working session between the PM and Claude. This file is the contin
 **Where things stand.** Watcher still sleeping until Monday 18:00 IST. Task 01 acceptance still pending one real shift of data.
 
 **Next.** Unchanged from session 1, take the acceptance verdict, then task 02 the meeting judge.
+
+## Session 3, 2026-07-25
+
+**What happened.**
+
+- Asish returned with eight shifts of real data and asked whether it was enough to proceed. It was, and checking it rather than assuming produced the paper's best finding so far.
+- The data. Eight shifts captured, 14 to 23 July, 9,922 samples, about 82.7 hours, every night run end to end unattended. Applications captured on every sample, browser hosts on 65 percent, window titles on 1.1 percent.
+- The defect. Idle detection had never worked. All 9,922 samples recorded idle_seconds as exactly 0.0. The cause was the `-d 1` depth flag on the ioreg call, which truncated the output before HIDIdleTime, combined with a parser that returned 0.0 on no match. A dead sensor was indistinguishable from a user who never pauses.
+- Why the gate missed it. Every idle test injected a fake reader. The only test of the real path fed a hand written string to the parser. Thirty five passing tests, an independent cross model review, and a subsystem that had never once run for real. The definition of done shared the blame, "idle over 180 seconds marks the sample idle" is a claim about logic that a mock satisfies.
+- Task 01 was rejected at acceptance on that one blocking defect, filed in acceptance.md. review.md was left untouched, because backfilling it would destroy the evidence.
+- The fix went back to Codex with a definition of done written so no mock could pass it, requiring a live reading from the real machine and a second reading two seconds later that must be larger. Codex delivered, 39 tests now pass with none skipped, null is now distinct from zero, and the status command reports the live sensor.
+- The review re ran everything, then did the check that mattered. The reviewer reintroduced the original bug in a scratch copy and confirmed both new tests fail. Approved with zero findings. The developer's self report was true this time, collaboration log issue 51 genuinely exists, which is worth noting against the fabrication on the first pass.
+- Two findings surfaced from running the real system rather than reading the diff. The launchd agent is disabled in launchd's persistent override database, so it has not run since Friday morning and Friday 24 July produced no log. And the installed copy in Application Support is still the July 12 code, so the fix is not live. Both are the same defect class as the original bug, silent failure, because the plist sends stdout and stderr to /dev/null.
+
+**Where things stand.**
+
+- The repair is merged and proven in the repository. It is not yet running on the machine.
+- Task 01 acceptance is still open, pending the reinstall plus one real shift with a working sensor. The next working shift is Monday 27 July at 18:00.
+- Asish has not yet been asked to authorise the re enable and reinstall, since it touches his machine and nothing is lost by waiting, Saturday and Sunday nights are not worked.
+
+**Next.**
+
+- Get authorisation, then `launchctl enable gui/501/com.shifttracker.watcher` and rerun install.sh, and confirm with the status command that the agent is loaded and the idle reading is live.
+- Consider a small task 01b for the silent failure class, a heartbeat plus real log paths instead of /dev/null, so the watcher can say when it has died.
+- Then task 02, the meeting judge.
+- The paper needs a new section on this, the mock shaped definition of done. It is the strongest evidence yet for the thesis that defining done is the skill.

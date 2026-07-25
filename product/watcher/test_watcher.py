@@ -7,7 +7,9 @@ import re
 import shutil
 import stat
 import subprocess
+import sys
 import tempfile
+import time
 import tokenize
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -142,6 +144,36 @@ class SamplingTests(unittest.TestCase):
             self.assertFalse(records[0]["idle"])
             self.assertTrue(records[1]["idle"])
 
+    def test_unavailable_idle_sensor_writes_null_and_not_idle(self):
+        timestamp = datetime(2026, 7, 6, 18, 0, tzinfo=INDIA)
+        with tempfile.TemporaryDirectory() as home:
+            watcher.sample_once(
+                timestamp=timestamp,
+                home=home,
+                activity_reader=lambda: ("Notes", "Plan"),
+                idle_reader=lambda: None,
+            )
+            path = Path(home) / ".shift-tracker" / "log" / "2026-07-06.jsonl"
+            record = json.loads(path.read_text(encoding="utf-8"))
+            self.assertIsNone(record["idle_seconds"])
+            self.assertFalse(record["idle"])
+
+    def test_zero_and_unavailable_idle_readings_write_different_records(self):
+        timestamp = datetime(2026, 7, 6, 18, 0, tzinfo=INDIA)
+        with tempfile.TemporaryDirectory() as home:
+            common = {
+                "timestamp": timestamp,
+                "home": home,
+                "activity_reader": lambda: ("Notes", "Plan"),
+            }
+            watcher.sample_once(idle_reader=lambda: 0, **common)
+            watcher.sample_once(idle_reader=lambda: None, **common)
+            path = Path(home) / ".shift-tracker" / "log" / "2026-07-06.jsonl"
+            records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(records[0]["idle_seconds"], 0.0)
+            self.assertIsNone(records[1]["idle_seconds"])
+            self.assertNotEqual(records[0], records[1])
+
     def test_nonbrowser_never_calls_host_reader(self):
         timestamp = datetime(2026, 7, 6, 18, 0, tzinfo=INDIA)
         with tempfile.TemporaryDirectory() as home:
@@ -198,7 +230,23 @@ class CollectionTests(unittest.TestCase):
     def test_ioreg_nanoseconds_become_seconds(self):
         output = '    "HIDIdleTime" = 180000000001\n'
         self.assertAlmostEqual(watcher.idle_seconds_from_ioreg(output), 180.000000001)
-        self.assertEqual(watcher.idle_seconds_from_ioreg("unavailable"), 0)
+        self.assertIsNone(watcher.idle_seconds_from_ioreg("unavailable"))
+        self.assertIsNone(watcher.idle_seconds_from_ioreg('"HIDIdleTime" = 123 invalid'))
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS is required")
+    def test_real_idle_reading_is_greater_than_zero(self):
+        idle_seconds = watcher.read_idle_seconds()
+        self.assertIsInstance(idle_seconds, (int, float))
+        self.assertGreater(idle_seconds, 0)
+
+    @unittest.skipUnless(sys.platform == "darwin", "macOS is required")
+    def test_real_idle_reading_increases(self):
+        first = watcher.read_idle_seconds()
+        self.assertIsInstance(first, (int, float))
+        time.sleep(2)
+        second = watcher.read_idle_seconds()
+        self.assertIsInstance(second, (int, float))
+        self.assertGreater(second, first)
 
     def test_host_validation_keeps_only_a_host(self):
         self.assertEqual(watcher.normalize_host("EXAMPLE.COM.\n"), "example.com")
@@ -256,12 +304,19 @@ class StatusTests(unittest.TestCase):
             }
             (log_directory / "2026-07-06.jsonl").write_text(json.dumps(record) + "\n", encoding="utf-8")
             lines = []
-            watcher.print_status(timestamp=timestamp, home=home, loaded=True, output=lines.append)
+            watcher.print_status(
+                timestamp=timestamp,
+                home=home,
+                loaded=True,
+                output=lines.append,
+                idle_reader=lambda: 12.5,
+            )
             output = "\n".join(lines)
             self.assertIn("Agent loaded  yes", output)
             self.assertIn("Inside shift window  yes", output)
             self.assertIn("2026-07-06.jsonl", output)
             self.assertIn("2026-07-07T00:29:30+05:30", output)
+            self.assertIn("Current idle seconds  12.5", output)
             self.assertNotIn("Highly sensitive title", output)
             self.assertNotIn("private.example", output)
 
@@ -269,10 +324,17 @@ class StatusTests(unittest.TestCase):
         timestamp = datetime(2026, 7, 12, 22, 0, tzinfo=INDIA)
         with tempfile.TemporaryDirectory() as home:
             lines = []
-            watcher.print_status(timestamp=timestamp, home=home, loaded=False, output=lines.append)
+            watcher.print_status(
+                timestamp=timestamp,
+                home=home,
+                loaded=False,
+                output=lines.append,
+                idle_reader=lambda: None,
+            )
             self.assertIn("Agent loaded  no", lines)
             self.assertIn("Inside shift window  no", lines)
             self.assertIn("Last recorded sample  none", lines)
+            self.assertIn("Idle sensor is unavailable", lines)
 
     def test_last_sample_skips_a_malformed_trailing_line(self):
         with tempfile.TemporaryDirectory() as home:
@@ -286,7 +348,13 @@ class StatusTests(unittest.TestCase):
         timestamp = datetime(2026, 7, 6, 0, 30, tzinfo=INDIA)
         with tempfile.TemporaryDirectory() as home:
             lines = []
-            watcher.print_status(timestamp=timestamp, home=home, loaded=False, output=lines.append)
+            watcher.print_status(
+                timestamp=timestamp,
+                home=home,
+                loaded=False,
+                output=lines.append,
+                idle_reader=lambda: 0,
+            )
             self.assertIn("2026-07-06.jsonl", "\n".join(lines))
 
     def test_agent_loaded_uses_modern_then_legacy_lookup(self):
